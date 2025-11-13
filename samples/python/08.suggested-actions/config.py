@@ -10,8 +10,10 @@ import os
 class DefaultConfig:
     """ Bot Configuration """
 
-    PORT = 3978
+    ENV = os.environ.get("BOT_ENV", "production")
+    HOST = os.environ.get("BOT_HOST", "0.0.0.0")  # 0.0.0.0 for Azure, localhost for local dev
+    PORT = int(os.environ.get("BOT_PORT") or os.environ.get("PORT", "3978"))  # Azure will provide PORT via env var
     APP_ID = os.environ.get("MicrosoftAppId", "")
     APP_PASSWORD = os.environ.get("MicrosoftAppPassword", "")
-    APP_TYPE = os.environ.get("MicrosoftAppType", "MultiTenant")
+    APP_TYPE = os.environ.get("MicrosoftAppType", "SingleTenant")
     APP_TENANTID = os.environ.get("MicrosoftAppTenantId", "")

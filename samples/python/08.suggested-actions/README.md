@@ -34,9 +34,72 @@ They enable the user to answer a question or make a selection with a simple tap 
 
 Unlike buttons that appear within rich cards (which remain visible and accessible to the user even after being tapped), buttons that appear within the suggested actions pane will disappear after the user makes a selection. This prevents the user from tapping stale buttons within a conversation and simplifies bot development (since you will not need to account for that scenario).
 
-## Deploy the bot to Azure
+## Environment Configuration
 
-To learn more about deploying a bot to Azure, see [Deploy your bot to Azure](https://aka.ms/azuredeployment) for a complete list of deployment instructions.
+This bot uses different authentication adapters depending on the environment:
+
+### Local Development (Bot Framework Emulator)
+- Set the `BOT_ENV` environment variable to `dev`:
+  ```bash
+  BOT_ENV=dev python app.py
+  ```
+- The bot will use `BotFrameworkHttpAdapter` with no authentication
+- In the Bot Framework Emulator, leave the "Microsoft App ID" and "Microsoft App password" fields **empty** when connecting
+
+### Azure Deployment (Production)
+- **Do not set** the `BOT_ENV` environment variable (it defaults to "production")
+- The bot will use `CloudAdapter` with `ConfigurationBotFrameworkAuthentication`
+- Azure will automatically provide the required credentials through environment variables:
+  - `MicrosoftAppId`
+  - `MicrosoftAppPassword`
+  - `MicrosoftAppType` (defaults to "MultiTenant")
+  - `MicrosoftAppTenantId`
+
+**Important:** When creating a deployment package (zip file) for Azure, ensure `BOT_ENV` is not set in your Azure App Service configuration so it defaults to production mode with proper authentication.
+
+## Deploy the bot to Azure (to learn more about deploying a bot to Azure, see [Deploy your bot to Azure](https://aka.ms/azuredeployment))
+
+### Prerequisites
+- Azure CLI installed and logged in (`az login`)
+- Azure AD App Registration completed (App ID, App Secret, and Tenant ID)
+- Resource Group created in Azure
+
+### Deployment Steps
+
+#### 1. Deploy Azure Infrastructure
+Follow the instructions in [deploymentTemplates/deployUseExistResourceGroup/readme.md](deploymentTemplates/deployUseExistResourceGroup/readme.md) to:
+- Deploy the App Service (template-BotApp-with-rg.json)
+- Deploy the Bot Registration (template-AzureBot-with-rg.json)
+
+Make sure to set `appType=SingleTenant` for Teams bots and provide your `tenantId`.
+
+#### 2. Create Deployment Package
+Create a zip file containing your bot code (from the root of this directory):
+
+```bash
+zip -r bot.zip app.py config.py bots/ requirements.txt -x "*.pyc" -x "*__pycache__*" -x "*.git*" -x ".env*" -x "*venv/*" -x "*.venv/*"
+```
+
+**Note:** The command above excludes common files that should NOT be deployed (`.env`, `.git`, `__pycache__`, virtual environments).
+
+#### 3. Deploy Bot Code to Azure
+Upload your bot code to the Azure App Service:
+
+```bash
+az webapp deployment source config-zip \
+  --resource-group <your-resource-group-name> \
+  --name <your-app-service-name> \
+  --src bot.zip
+```
+
+#### 4. Verify Deployment
+- Check that your bot is running: `https://<your-app-service-name>.azurewebsites.net`
+- Check logs in Azure Portal: App Service → Log stream
+- Test your bot endpoint: `https://<your-app-service-name>.azurewebsites.net/api/messages`
+
+**Important:** The infrastructure templates automatically configure the required environment variables (`MicrosoftAppId`, `MicrosoftAppPassword`, etc.) from the deployment parameters. You do not need to set `BOT_ENV` - it defaults to "production" mode.
+
+For more details, see [Deploy your bot to Azure](https://aka.ms/azuredeployment).
 
 ## Further reading
 

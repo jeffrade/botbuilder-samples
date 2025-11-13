@@ -13,6 +13,8 @@ from botbuilder.core import (
 )
 from botbuilder.core.integration import aiohttp_error_middleware
 from botbuilder.integration.aiohttp import CloudAdapter, ConfigurationBotFrameworkAuthentication
+from botbuilder.core import BotFrameworkAdapterSettings
+from botbuilder.integration.aiohttp import BotFrameworkHttpAdapter
 from botbuilder.schema import Activity, ActivityTypes
 
 from bots import SuggestActionsBot
@@ -20,9 +22,22 @@ from config import DefaultConfig
 
 CONFIG = DefaultConfig()
 
+# Validate production configuration
+if CONFIG.ENV != "dev":
+    if not CONFIG.APP_ID or not CONFIG.APP_PASSWORD:
+        raise ValueError(
+            "Production mode requires MicrosoftAppId and MicrosoftAppPassword environment variables. "
+            "Set these in Azure App Service Configuration → Application settings."
+        )
+
 # Create adapter.
 # See https://aka.ms/about-bot-adapter to learn more about how bots work.
-ADAPTER = CloudAdapter(ConfigurationBotFrameworkAuthentication(CONFIG))
+if CONFIG.ENV == "dev":
+    # For local development without auth, use BotFrameworkHttpAdapter with empty credentials
+    SETTINGS = BotFrameworkAdapterSettings("", "")
+    ADAPTER = BotFrameworkHttpAdapter(SETTINGS)
+else:
+    ADAPTER = CloudAdapter(ConfigurationBotFrameworkAuthentication(CONFIG))
 
 # Catch-all for errors.
 async def on_error(context: TurnContext, error: Exception):
@@ -60,7 +75,23 @@ BOT = SuggestActionsBot()
 
 # Listen for incoming requests on /api/messages.
 async def messages(req: Request) -> Response:
-    return await ADAPTER.process(req, BOT)
+    if CONFIG.ENV == "dev":
+        # BotFrameworkHttpAdapter expects (activity, auth_header, bot)
+        if "application/json" in req.headers.get("Content-Type", ""):
+            body = await req.json()
+        else:
+            return Response(status=HTTPStatus.UNSUPPORTED_MEDIA_TYPE)
+
+        activity = Activity().deserialize(body)
+        auth_header = req.headers.get("Authorization", "")
+
+        response = await ADAPTER.process_activity(activity, auth_header, BOT.on_turn)
+        if response:
+            return json_response(data=response.body, status=response.status)
+        return Response(status=HTTPStatus.OK)
+    else:
+        # CloudAdapter has a simpler API - just pass the request and bot
+        return await ADAPTER.process(req, BOT)
 
 
 APP = web.Application(middlewares=[aiohttp_error_middleware])
@@ -68,6 +99,11 @@ APP.router.add_post("/api/messages", messages)
 
 if __name__ == "__main__":
     try:
-        web.run_app(APP, host="localhost", port=CONFIG.PORT)
+        if CONFIG.ENV == "dev":
+            print(f"Starting Bot on http://{CONFIG.HOST}:{CONFIG.PORT}/api/messages in {CONFIG.ENV} mode...")
+        else:
+            print(f"Starting Bot in {CONFIG.ENV} mode on port {CONFIG.PORT}...")
+            print(f"App Type: {CONFIG.APP_TYPE}, Tenant: {CONFIG.APP_TENANTID or 'default'}")
+        web.run_app(APP, host=CONFIG.HOST, port=CONFIG.PORT)
     except Exception as error:
         raise error
