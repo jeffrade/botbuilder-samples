@@ -39,15 +39,15 @@ class SuggestActionsBot(ActivityHandler):
                 await turn_context.send_activity(
                     MessageFactory.text(
                         f"Welcome to SuggestedActionsBot {member.name}."
-                        f" This bot will introduce you to suggestedActions."
-                        f" Please answer the question: "
+                        f" This bot will introduce you to Local_08 suggestedActions."
+                        f" Please select your answer to this question: "
                     )
                 )
 
                 await self._send_suggested_actions(turn_context)
 
     def _process_input(self, text: str):
-        color_text = "is the best color, I agree."
+        color_text = "is the worst color, I disagree."
 
         if text == "red":
             return f"Red {color_text}"
