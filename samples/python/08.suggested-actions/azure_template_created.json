@@ -1,0 +1,140 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "botId": {
+            "type": "string"
+        },
+        "sku": {
+            "type": "string",
+            "defaultValue": "S1",
+            "allowedValues": [
+                "F0",
+                "S1"
+            ]
+        },
+        "appType": {
+            "type": "string",
+            "defaultValue": "multitenant"
+        },
+        "msAppId": {
+            "type": "string"
+        },
+        "tenantId": {
+            "type": "string"
+        },
+        "msiResourceId": {
+            "type": "string"
+        },
+        "displayName": {
+            "type": "string",
+            "defaultValue": ""
+        },
+        "resourceTags": {
+            "type": "object",
+            "defaultValue": {
+                "Microsoft.BotService/botServices": {}
+            }
+        },
+        "region": {
+            "type": "string",
+            "defaultValue": "global"
+        },
+        "secretContentType": {
+            "type": "string",
+            "defaultValue": ""
+        }
+    },
+    "variables": {
+        "botDisplayName": "[if(empty(parameters('displayName')), parameters('botId'), parameters('displayName'))]",
+        "empty": {},
+        "createManagedIdentity": "[and(equals(parameters('appType'), 'UserAssignedMSI'), empty(parameters('msAppId')))]",
+        "identityResourceName": "[parameters('botId')]",
+        "identityResourceID": "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('identityResourceName'))]",
+        "botTags": "[if(contains(parameters('resourceTags'), 'Microsoft.BotService/botServices'), parameters('resourceTags')['Microsoft.BotService/botServices'], variables('empty'))]"
+    },
+    "resources": [
+        {
+            "condition": "[variables('createManagedIdentity')]",
+            "type": "Microsoft.Resources/deployments",
+            "apiVersion": "2022-09-01",
+            "name": "MSIResource",
+            "properties": {
+                "mode": "Incremental",
+                "expressionEvaluationOptions": {
+                    "scope": "inner"
+                },
+                "parameters": {
+                    "region": {
+                        "value": "[parameters('region')]"
+                    },
+                    "identityResourceName": {
+                        "value": "[variables('identityResourceName')]"
+                    },
+                    "identityResourceID": {
+                        "value": "[variables('identityResourceID')]"
+                    }
+                },
+                "template": {
+                    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+                    "contentVersion": "1.0.0.0",
+                    "parameters": {
+                        "region": {
+                            "type": "string",
+                            "defaultValue": "global"
+                        },
+                        "identityResourceName": {
+                            "type": "string"
+                        },
+                        "identityResourceID": {
+                            "type": "string"
+                        }
+                    },
+                    "variables": {
+                        "location": "[resourceGroup().location]",
+                        "regionLocation": "[if(equals(parameters('region'), 'global'), variables('location'), parameters('region'))]"
+                    },
+                    "resources": [
+                        {
+                            "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
+                            "apiVersion": "2018-11-30",
+                            "name": "[parameters('identityResourceName')]",
+                            "location": "[variables('regionLocation')]",
+                            "properties": {}
+                        }
+                    ],
+                    "outputs": {
+                        "identityResource": {
+                            "type": "Object",
+                            "value": "[reference(parameters('identityResourceID'))]"
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "type": "Microsoft.BotService/botServices",
+            "name": "[parameters('botId')]",
+            "kind": "azurebot",
+            "apiVersion": "2018-07-12",
+            "location": "[parameters('region')]",
+            "sku": {
+                "name": "[parameters('sku')]"
+            },
+            "tags": "[variables('botTags')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Resources/deployments', 'MSIResource')]"
+            ],
+            "properties": {
+                "displayName": "[variables('botDisplayName')]",
+                "msaAppType": "[parameters('appType')]",
+                "msaAppId": "[if(variables('createManagedIdentity'), reference('MSIResource').outputs.identityResource.value.clientId, parameters('msAppId'))]",
+                "msaAppTenantId": "[if(variables('createManagedIdentity'), reference('MSIResource').outputs.identityResource.value.tenantId, parameters('tenantId'))]",
+                "msaAppMSIResourceId": "[if(variables('createManagedIdentity'), variables('identityResourceID'), parameters('msiResourceId'))]",
+                "openWithHint": "",
+                "appPasswordHint": "",
+                "endpoint": ""
+            }
+        }
+    ]
+}

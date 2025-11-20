@@ -1,0 +1,48 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "appServiceName": {
+            "value": "Bot_App_Service"
+        },
+        "existingAppServicePlanName": {
+            "value": ""
+        },
+        "existingAppServicePlanLocation": {
+            "value": ""
+        },
+        "newAppServicePlanName": {
+            "value": "Bot_App_Service_Plan"
+        },
+        "newAppServicePlanLocation": {
+            "value": "East US"
+        },
+        "newAppServicePlanSku": {
+            "value": {
+                "name": "B1",
+                "tier": "Basic",
+                "size": "B1",
+                "family": "B",
+                "capacity": 1
+            }
+        },
+        "appType": {
+            "value": "SingleTenant"
+        },
+        "appId": {
+            "value": "************************************"
+        },
+        "appSecret": {
+            "value": "****************************************"
+        },
+        "tenantId": {
+            "value": "************************************"
+          },
+          "UMSIName": {
+              "value": ""
+          },
+          "UMSIResourceGroupName": {
+              "value": ""
+          }
+        }
+}

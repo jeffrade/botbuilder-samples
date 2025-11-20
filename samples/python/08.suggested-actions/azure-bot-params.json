@@ -1,0 +1,21 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "azureBotId": {
+      "value": "Local_08_Suggested_Actions"
+    },
+    "azureBotRegion": {
+      "value": "global"
+    },
+    "appType": {
+      "value": "SingleTenant"
+    },
+    "appId": {
+      "value": "88888888-4444-4444-4444-cccccccccccc"
+    },
+    "tenantId": {
+      "value": "88888888-4444-4444-4444-cccccccccccc"
+    }
+  }
+}
